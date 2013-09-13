@@ -25,6 +25,8 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const St = imports.gi.St;
 
+const MessageTray = imports.ui.messageTray;
+
 const NETWORK_CONNECTED = "network-wired-symbolic";
 const NETWORK_OFFLINE = "network-offline-symbolic";
 
@@ -64,6 +66,7 @@ Netctl.prototype = {
     },
 
     _stop_all: function() {
+        _myNotify(this._get_status());
         this._execute_async("gksudo /usr/bin/netctl stop-all ");
     },
 
@@ -78,6 +81,7 @@ Netctl.prototype = {
         }
         catch (e) {
             global.logError(e);
+            _myNotify(e);
         }
     },
 
@@ -136,7 +140,16 @@ Netctl.prototype = {
             this._update_menu();
             return true;
         }));
-    }
+    },
+    
+    _get_status: function() {
+        global.logError("get status called: "+this._get_connected_networks());
+        let command = "netctl status "+this._get_connected_networks();
+        let result =  GLib.spawn_command_line_sync(command)[1].toString();
+        global.logError(result);
+        return result;
+    },
+
 }
 
 
@@ -153,4 +166,15 @@ function disable() {
     indicator.destroy();
     Mainloop.source_remove(event);
     indicator = null;
+}
+
+function _myNotify(text)
+{
+    global.log("_myNotify called: " + text);
+ 
+    let source = new MessageTray.SystemNotificationSource();
+    Main.messageTray.add(source);
+    let notification = new MessageTray.Notification(source, "Netctl", text);
+    notification.setTransient(true);
+    source.notify(notification);
 }
